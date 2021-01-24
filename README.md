@@ -1,5 +1,5 @@
 # zooplustest
 
-Test cases are in integration-tests module
-Use maven to run test cases
+Test cases are placed in integration-tests module.<br>
+Use maven to run test cases:<br>
 mvn clean install -> command compiles, generates target classes and runs test cases 
