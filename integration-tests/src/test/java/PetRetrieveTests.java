@@ -9,6 +9,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
@@ -33,9 +34,9 @@ public class PetRetrieveTests extends PetTestAbstract {
         Pet pet3 = new Pet().category(new Category().id(3L).name("cat")).name("3")
                 .photoUrls(Collections.singletonList("1a2b"))
                 .tags(Collections.singletonList(new Tag().id(3L).name("small"))).status(Pet.StatusEnum.SOLD);
-        createPet(pet1);
-        createPet(pet2);
-        createPet(pet3);
+        createPetAndGetId(pet1);
+        createPetAndGetId(pet2);
+        createPetAndGetId(pet3);
     }
 
     @AfterClass
@@ -46,8 +47,9 @@ public class PetRetrieveTests extends PetTestAbstract {
 
     @Test
     public void testFindPetById() {
-        Pet pet = pets.get(0);
-        Long id = pet.getId();
+        Map.Entry<Long,Pet> entry = pets.entrySet().iterator().next();
+        Long id = entry.getKey();
+        Pet pet = entry.getValue();
         Pet result = given().when().get(GET_BY_ID, id)
                 .then()
                 .statusCode(HttpStatus.SC_OK)

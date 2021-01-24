@@ -14,11 +14,38 @@ import java.util.Collections;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 
 public class PetModifyTests extends PetTestAbstract {
 
     private static final String PET_PICTURE_FILE = "src/test/resources/dog.jpg";
+
+    private Pet pet = new Pet()
+            .category(new Category()
+                    .id(2L)
+                    .name("cat"))
+            .name("1")
+            .photoUrls(Collections.singletonList("1234"))
+            .tags(Collections.singletonList(
+                    new Tag()
+                            .id(1L)
+                            .name("small")))
+            .status(Pet.StatusEnum.AVAILABLE);
+
+    private Pet buildPetWithId(Long id){
+        return new Pet()
+                .id(id)
+                .category(new Category()
+                        .id(2L)
+                        .name("dog"))
+                .name("2")
+                .photoUrls(Collections.singletonList("1234"))
+                .tags(Collections.singletonList(
+                        new Tag()
+                                .id(2L)
+                                .name("big")))
+                .status(Pet.StatusEnum.AVAILABLE);
+    }
 
     @After
     public void tearDown() {
@@ -32,9 +59,7 @@ public class PetModifyTests extends PetTestAbstract {
 
     @Test
     public void testAddPetByPost() {
-        Pet pet = new Pet().id(1000L).category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
+        Pet pet = buildPetWithId(1000L);
         Pet result = given()
                 .contentType(ContentType.JSON)
                 .body(pet)
@@ -44,18 +69,13 @@ public class PetModifyTests extends PetTestAbstract {
                 .extract()
                 .as(Pet.class);
         assertThat(result).isEqualTo(pet);
+        delete(pet.getId());
     }
 
     @Test
     public void testUpdateExistingPet() {
-        Pet pet = new Pet().category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
-        Long id = createPet(pet);
-
-        Pet pet1 = new Pet().id(id).category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("2344"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("kotek"))).status(null);
+        Long id = createPetAndGetId(pet);
+        Pet pet1 = buildPetWithId(id);
 
         Pet result = given()
                 .contentType(ContentType.JSON)
@@ -71,15 +91,9 @@ public class PetModifyTests extends PetTestAbstract {
 
     @Test
     public void testUpdateExistingPetWhenPetNotFound() {
-        Pet pet = new Pet().category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
-
-        Long id = createPet(pet);
+        Long id = createPetAndGetId(pet);
         delete(id);
-        Pet pet1 = new Pet().id(id).category(new Category().id(1L).name("dog")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
+        Pet pet1 = buildPetWithId(id);
 
         Pet result = given()
                 .contentType(ContentType.JSON)
@@ -95,33 +109,28 @@ public class PetModifyTests extends PetTestAbstract {
 
     @Test
     public void testUpdateExistingPetByPostAndId() {
-        Pet pet = new Pet().category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
-
-        Long id = createPet(pet);
+        Long id = createPetAndGetId(pet);
 
         given().contentType("application/x-www-form-urlencoded")
                 .queryParam("name", "Puszek")
-                .queryParam("status", "pending").when().post("/pet/{petId}", id)
+                .queryParam("status", Pet.StatusEnum.PENDING.toString())
+                .when()
+                .post("/pet/{petId}", id)
                 .then()
                 .statusCode(200);
 
         when().get("/pet/{petId}", id)
                 .then()
                 .statusCode(HttpStatus.SC_OK)
-                .assertThat().body("name", equalTo("Puszek"),
-                "status", equalTo("pending"));
+                .assertThat()
+                .body("name", equalTo("Puszek"),
+                "status", equalTo(Pet.StatusEnum.PENDING.toString()));
 
     }
 
     @Test
     public void testDeleteById() {
-        Pet pet = new Pet().category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
-
-        Long id = createPet(pet);
+        Long id = createPetAndGetId(pet);
 
         when().delete("/pet/{petId}", id)
                 .then()
@@ -140,24 +149,31 @@ public class PetModifyTests extends PetTestAbstract {
     @Test
     public void testPostUploadImage() {
         File file = new File(PET_PICTURE_FILE);
-        Pet pet = new Pet().category(new Category().id(1L).name("cat")).name("1")
-                .photoUrls(Collections.singletonList("1234"))
-                .tags(Collections.singletonList(new Tag().id(1L).name("small"))).status(Pet.StatusEnum.AVAILABLE);
-
-        Long id = given()
-                .contentType("application/json")
-                .body(pet)
-                .when().post("/pet")
-                .then()
-                .statusCode(200)
-                .extract()
-                .path("id");
+        Long id = createPetAndGetId(pet);
 
         given().contentType("multipart/form-data")
                 .multiPart("file", file, "multipart/form-data")
                 .accept(ContentType.JSON)
                 .when()
                 .post("/pet/{id}/uploadImage", id).then().statusCode(200);
+
+    }
+
+    @Test
+    public void testPostUploadImageWithAdditionalData() {
+        File file = new File(PET_PICTURE_FILE);
+        Long id = createPetAndGetId(pet);
+
+        given().contentType("multipart/form-data")
+                .multiPart("file", file, "multipart/form-data")
+                .multiPart("additionalMetadata", "test")
+                .accept(ContentType.JSON)
+                .when()
+                .post("/pet/{id}/uploadImage", id)
+                .then()
+                .statusCode(200)
+                .body("message", containsString("additionalMetadata: test\nFile uploaded to ./dog.jpg," ));
+
 
     }
 }
