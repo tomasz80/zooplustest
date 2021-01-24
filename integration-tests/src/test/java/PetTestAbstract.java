@@ -1,3 +1,4 @@
+import io.restassured.http.ContentType;
 import io.swagger.client.model.Pet;
 
 import java.util.HashMap;
@@ -13,7 +14,7 @@ abstract class PetTestAbstract {
 
     static Long createPetAndGetId(Pet pet) {
         Long id = given()
-                .contentType("application/json")
+                .contentType(ContentType.JSON)
                 .body(pet)
                 .when().post(PATH + "/pet").then().assertThat().statusCode(200).extract().path("id");
         pet.id(id);

@@ -142,20 +142,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>integration-test</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                        <phase>integration-test</phase>
-                        <configuration>
-                            <includes>
-                                <include>**/*Tests.java</include>
-                            </includes>
-                        </configuration>
-                    </execution>
-                </executions>
+
             </plugin>
         </plugins>
     </build>
